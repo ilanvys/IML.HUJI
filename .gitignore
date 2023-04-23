@@ -7,4 +7,6 @@ figures/*.png
 .idea
 **__pycache__
 **.ipynb_checkpoints
-lab/
+lab
+.vscode
+test.py
