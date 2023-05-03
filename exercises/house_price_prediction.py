@@ -3,8 +3,6 @@ from IMLearn.learners.regressors import LinearRegression
 
 from typing import NoReturn, Optional, Tuple
 import os
-from typing import NoReturn, Optional, Tuple
-import os
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -21,6 +19,8 @@ numeric_features = ['bedrooms', 'bathrooms', 'sqft_living',
                     'sqft_basement', 'yr_built', 'yr_renovated']
 features_to_drop = ['id', 'date', 'lat', 'long']
 
+# TODO: Before submission go over the code and make sure its pretty and 
+# TODO: make sure the imports are ok
 
 def preprocess_data_learning(X: pd.DataFrame, y: pd.Series = None):
     global columns_averages, columns_order
@@ -127,16 +127,6 @@ def preprocess_data(X: pd.DataFrame, y: Optional[pd.Series] = None):
         return preprocess_data_test(X)
     
     return preprocess_data_learning(X, y)
-    # Drop irrelevant features
-    X = X.drop(features_to_drop, axis=1)
-
-    # Make sure the numeric features are indeed numeric
-    X[numeric_features] = X[numeric_features].apply(pd.to_numeric)
-
-    if y is None:
-        return preprocess_data_test(X)
-    
-    return preprocess_data_learning(X, y)
 
 def feature_evaluation(X: pd.DataFrame, y: pd.Series, output_path: str = ".") -> NoReturn:
     """
@@ -182,40 +172,9 @@ def remove_test_samples_with__invalid_response(X: pd.DataFrame, y: pd.Series) ->
     X = X.loc[y.index]
     
     return X, y
-    std_y = np.std(y)
-    for column in X.columns:
-        if not column.startswith('zipcode_'):
-            # Calculate the Pearson Correlation for the current feature
-            pearson_corr = np.cov(X[column], y)[0,1] / (np.std(X[column]) * std_y)
-            
-            # Calculate the trendline using Linear Regression
-            feature = X[column]
-            coefs = LinearRegression(include_intercept=True).fit(feature, y).coefs_
-            trendline = coefs[0] + feature * coefs[1]
-
-            # Plot the result
-            scatter_trace = go.Scatter(x=feature, y=y, mode='markers', showlegend=False)
-            trendline_trace = go.Scatter(x=feature, y=trendline, mode='lines', 
-                                        line=dict(color='orange'), name='Trendline', showlegend=False)
-            layout= go.Layout(
-                        title=f'Pearson Correlation Between {column} and the Response<br>Pearson Correlation is {pearson_corr}', 
-                        xaxis_title=f'Values of {column}', 
-                        yaxis_title='Response')
-            fig = go.Figure(data=[scatter_trace, trendline_trace], layout=layout)\
-                    .write_image(output_path + f'/Pearson_Correlation_{column}.png')
-            
-def remove_test_samples_with__invalid_response(X: pd.DataFrame, y: pd.Series) -> Tuple[pd.DataFrame, pd.Series]:
-    y = y.dropna()
-    X = X.loc[y.index]
-    
-    return X, y
 
 if __name__ == '__main__':
     np.random.seed(0)
-    df = pd.read_csv("datasets/house_prices.csv")
-    output_path = 'ex2_plots'
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
     df = pd.read_csv("datasets/house_prices.csv")
     output_path = 'ex2_plots'
     if not os.path.exists(output_path):
@@ -225,16 +184,11 @@ if __name__ == '__main__':
     price = df['price']
     df.drop(columns=['price'], inplace=True)
     train_X, train_y, test_X, test_y = split_train_test(df, price)
-    price = df['price']
-    df.drop(columns=['price'], inplace=True)
-    train_X, train_y, test_X, test_y = split_train_test(df, price)
 
     # Question 2 - Preprocessing of housing prices dataset
     train_X, train_y = preprocess_data(train_X, train_y)
-    train_X, train_y = preprocess_data(train_X, train_y)
 
     # Question 3 - Feature evaluation with respect to response
-    feature_evaluation(train_X, train_y, output_path)
     feature_evaluation(train_X, train_y, output_path)
 
     # Question 4 - Fit model over increasing percentages of the overall training data
@@ -269,28 +223,4 @@ if __name__ == '__main__':
                 yaxis_title='Test Data MSE')
     go.Figure(data=[upper, lower, mean], layout=layout)\
         .write_image(output_path + '/Effect_of_Training_Size_on_Test_MSE.png')
-    test_X, test_y = remove_test_samples_with__invalid_response(test_X, test_y)
-    test_X = preprocess_data(test_X)
-    values = np.zeros((101, 10))
-    for p in range(10,101):
-        for i in range(10):
-            sampled_train_X = train_X.sample(frac=(p/100))
-            sampled_train_y = train_y.loc[sampled_train_X.index]
-            model = LinearRegression(include_intercept=True).fit(sampled_train_X, sampled_train_y)
-            values[p-10, i] = model.loss(test_X, test_y)
     
-    mean = values.mean(axis=1)
-    std = values.std(axis=1)
-    percentage_values = list(range(10,101))
-    upper = go.Scatter(x=percentage_values, y=mean-2*std, fill=None, mode='lines', 
-                            line=dict(color='orange'), showlegend=False)
-    lower = go.Scatter(x=percentage_values, y=mean+2*std, fill='tonexty', mode='lines', 
-                        line=dict(color='orange'), showlegend=False)
-    mean = go.Scatter(x=percentage_values, y=mean, mode='markers+lines', 
-                        line=dict(color='blue'), showlegend=False)
-    layout = go.Layout(
-                title=f'Effect of Training Size on Test MSE', 
-                xaxis_title=f'Training Data Percentage', 
-                yaxis_title='Test Data MSE')
-    go.Figure(data=[upper, lower, mean], layout=layout)\
-        .write_image(output_path + '/Effect_of_Training_Size_on_Test_MSE.png')
