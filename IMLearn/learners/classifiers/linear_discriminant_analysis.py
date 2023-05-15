@@ -46,7 +46,22 @@ class LDA(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        self.classes_ = np.unique(y)
+        classes_num = len(self.classes_)
+        self.pi_ = np.zeros(classes_num)
+        self.mu_ = np.zeros([classes_num, len(X[0])])
+
+        for i in range(classes_num):
+            indices = np.where(y == self.classes_[i])
+            self.pi_[i] = len(indices[0]) / len(y)
+            self.mu_[i] = np.mean(X[indices], axis=0)
+
+        # Calculate the centered data matrix
+        centered_X = X - self.mu_[y]
+        self.cov_ = np.dot(centered_X.T, centered_X) / (len(X)-len(self.classes_))
+        self._cov_inv = inv(self.cov_)
+
+        self.fitted_ = True
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -62,7 +77,9 @@ class LDA(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        likelihood = self.likelihood(X)
+        argmax_indices = np.argmax(likelihood, axis=1)
+        return self.classes_[argmax_indices]
 
     def likelihood(self, X: np.ndarray) -> np.ndarray:
         """
@@ -82,7 +99,10 @@ class LDA(BaseEstimator):
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
 
-        raise NotImplementedError()
+        z = np.sqrt((2 * np.pi) ** len(X[0]) * det(self.cov_))
+        diff = X[:, np.newaxis, :] - self.mu_
+        exp = np.exp(-0.5 * np.sum(((diff @ self._cov_inv) * diff), axis=2))
+        return self.pi_ * (1 / z) * exp
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -102,4 +122,4 @@ class LDA(BaseEstimator):
             Performance under missclassification loss function
         """
         from ...metrics import misclassification_error
-        raise NotImplementedError()
+        return misclassification_error(y, self._predict(X))

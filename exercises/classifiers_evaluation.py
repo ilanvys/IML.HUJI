@@ -38,15 +38,26 @@ def run_perceptron():
     """
     for n, f in [("Linearly Separable", "linearly_separable.npy"), ("Linearly Inseparable", "linearly_inseparable.npy")]:
         # Load dataset
-        raise NotImplementedError()
-
+        X, y = load_dataset("datasets/" + f)
+        
         # Fit Perceptron and record loss in each fit iteration
         losses = []
-        raise NotImplementedError()
+        def losses_callback(fitted_model, _, __):
+            losses.append(fitted_model._loss(X, y))
+
+        Perceptron(callback=losses_callback).fit(X, y)
 
         # Plot figure of loss as function of fitting iteration
-        raise NotImplementedError()
-
+        iterations = list(range(len(losses)))
+        scatter_trace = go.Scatter(x=iterations, 
+                                   y=losses, 
+                                   mode='lines', 
+                                   showlegend=False)
+        layout= go.Layout(
+                    title=f'Loss Function for {n} Data', 
+                    xaxis_title=f'Number of Model Updates', 
+                    yaxis_title='Misclassified Samples')
+        fig = go.Figure(data=[scatter_trace], layout=layout).show()
 
 def get_ellipse(mu: np.ndarray, cov: np.ndarray):
     """
@@ -79,25 +90,90 @@ def compare_gaussian_classifiers():
     """
     for f in ["gaussian1.npy", "gaussian2.npy"]:
         # Load dataset
-        raise NotImplementedError()
-
+        X, y = load_dataset("datasets/" + f)
+        
         # Fit models and predict over training set
-        raise NotImplementedError()
+        fitted_lda = LDA()
+        fitted_lda._fit(X, y)
+        predicted_lda = fitted_lda._predict(X)
+        
+        fitted_gaussian = GaussianNaiveBayes()
+        fitted_gaussian._fit(X, y)
+        predicted_gaussian = fitted_gaussian._predict(X)
 
         # Plot a figure with two suplots, showing the Gaussian Naive Bayes predictions on the left and LDA predictions
         # on the right. Plot title should specify dataset used and subplot titles should specify algorithm and accuracy
         # Create subplots
         from IMLearn.metrics import accuracy
-        raise NotImplementedError()
+        fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            f"Gaussian Naive Bayes with Accuracy: {round(accuracy(y, predicted_gaussian), 4)}",
+            f"LDA with Accuracy: {round(accuracy(y, predicted_lda), 4)}",
+            ])
 
         # Add traces for data-points setting symbols and colors
-        raise NotImplementedError()
+        gaussian_scatter = go.Scatter(
+            x=X[:, 0],
+            y=X[:, 1],
+            mode='markers',
+            marker=dict(
+                color=predicted_gaussian,
+                symbol=y,
+                line=dict(width=1, color="darkgrey"),
+                size=10,
+                colorscale='Viridis',
+            )
+        )
+        lda_scatter = go.Scatter(
+            x=X[:, 0],
+            y=X[:, 1],
+            mode='markers',
+            marker=dict(
+                color=predicted_lda,
+                symbol=y,
+                line=dict(width=1, color="darkgrey"),
+                size=10,
+                colorscale='Viridis'
+            )
+        )
+
+        fig.add_trace(gaussian_scatter, row=1, col=1)
+        fig.add_trace(lda_scatter, row=1, col=2)
 
         # Add `X` dots specifying fitted Gaussians' means
-        raise NotImplementedError()
+        gaussian_means = go.Scatter(
+            x=fitted_gaussian.mu_[:, 0],
+            y=fitted_gaussian.mu_[:, 1],
+            mode='markers',
+            marker=dict(
+                color='black',
+                symbol='x',
+                line=dict(width=1, color="darkgrey"),
+                size=20
+            )
+        )
+        lda_means = go.Scatter(
+            x=fitted_lda.mu_[:, 0],
+            y=fitted_lda.mu_[:, 1],
+            mode='markers',
+            marker=dict(
+                color='black',
+                symbol='x',
+                line=dict(width=1, color="darkgrey"),
+                size=20
+            )
+        )
+        fig.add_trace(gaussian_means, row=1, col=1)
+        fig.add_trace(lda_means, row=1, col=2)
 
         # Add ellipses depicting the covariances of the fitted Gaussians
-        raise NotImplementedError()
+        for i in range(len(np.unique(y))):
+            fig.add_trace(get_ellipse(fitted_gaussian.mu_[i], 
+                                      np.diag(fitted_gaussian.vars_[i])), row=1, col=1)
+            fig.add_trace(get_ellipse(fitted_lda.mu_[i], fitted_lda.cov_), row=1, col=2)
+    
+        fig.update_layout(title=f"Gaussian Classifiers of {f.split('.')[0]} dataset", 
+                          showlegend=False)
+        fig.show()
 
 
 if __name__ == '__main__':
