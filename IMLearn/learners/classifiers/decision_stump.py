@@ -4,6 +4,7 @@ from ...base import BaseEstimator
 import numpy as np
 from itertools import product
 
+#TODO: fix _find_threshold to work faster
 
 class DecisionStump(BaseEstimator):
     """
@@ -39,7 +40,18 @@ class DecisionStump(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        thr_err = np.inf
+        self.threshold_ = 0
+        self.j_ = 0
+        for index, feature in enumerate(X.T):
+            for sign in [-1, 1]:
+                feature_thr, feature_thr_err = self._find_threshold(feature, y, sign)
+            
+                if feature_thr_err < thr_err:
+                    thr_err = feature_thr_err
+                    self.threshold_ = feature_thr
+                    self.j_ = index
+                    self.sign_ = sign
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -63,7 +75,7 @@ class DecisionStump(BaseEstimator):
         Feature values strictly below threshold are predicted as `-sign` whereas values which equal
         to or above the threshold are predicted as `sign`
         """
-        raise NotImplementedError()
+        return np.where(X[:, self.j_] < self.threshold_, -self.sign_, self.sign_)
 
     def _find_threshold(self, values: np.ndarray, labels: np.ndarray, sign: int) -> Tuple[float, float]:
         """
@@ -95,8 +107,52 @@ class DecisionStump(BaseEstimator):
         For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
         which equal to or above the threshold are predicted as `sign`
         """
-        raise NotImplementedError()
+        #TODO: fix this func
+        # thr_err = np.inf
+        # thr = None
+        # possible_thresholds = np.sort(values)
 
+
+        # for thr_index, thr_val in enumerate(values):
+        #     predictions = np.where(values >= thr_val, sign, -sign)
+
+        #     # classification_err = np.mean(predictions != labels)
+        #     classification_err = np.sum(np.abs(labels)[np.sign(labels) == sign])
+        #     if classification_err < thr_err:
+        #         thr_err = classification_err
+        #         thr = thr_val
+        
+        # a = (thr, thr_err)
+
+        # for thr_index, thr_value in enumerate(possible_thresholds):
+        #     temp_classification = np.zeros(len(values))
+        #     for i in range(len(values)):
+        #         if values[i] < thr_value:
+        #             temp_classification[i] = -sign
+        #         else:
+        #             temp_classification[i] = sign
+        #     calssification_err = np.count_nonzero(temp_classification != labels) / len(labels)
+        #     if calssification_err < thr_err:
+        #         thr_err = calssification_err
+        #         thr = thr_index
+        
+        # return (thr, thr_err)
+
+        # Sort values such that search of threshold below is in O(nlogn) for n the number of samples
+        # instead of O(n^2)
+        possible_thresholds = np.sort(values)
+        ids = np.argsort(values)
+        values, labels = values[ids], labels[ids]
+
+        # Loss for classifying all as `sign` - namely, if threshold is smaller than values[0]
+        loss = np.sum(np.abs(labels)[np.sign(labels) == sign])
+
+        # Loss of classifying threshold being each of the values given
+        loss = np.append(loss, loss - np.cumsum(labels * sign))
+
+        id = np.argmin(loss)
+        return np.concatenate([[-np.inf], values[1:], [np.inf]])[id], loss[id]
+    
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
         Evaluate performance under misclassification loss function
@@ -114,4 +170,5 @@ class DecisionStump(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        raise NotImplementedError()
+        from ...metrics import misclassification_error
+        return misclassification_error(y, self._predict(X))
