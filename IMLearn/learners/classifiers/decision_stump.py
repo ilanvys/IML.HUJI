@@ -4,7 +4,6 @@ from ...base import BaseEstimator
 import numpy as np
 from itertools import product
 
-#TODO: fix _find_threshold to work faster
 
 class DecisionStump(BaseEstimator):
     """
@@ -107,51 +106,23 @@ class DecisionStump(BaseEstimator):
         For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
         which equal to or above the threshold are predicted as `sign`
         """
-        #TODO: fix this func
-        # thr_err = np.inf
-        # thr = None
-        # possible_thresholds = np.sort(values)
+        # Sort feature_values and corresponding labels together
+        sorted_indices = np.argsort(values)
+        sorted_values, sorted_labels = values[sorted_indices], labels[sorted_indices]
 
+        # Calculate initial loss when classifying all as positive_label
+        initial_loss = np.sum(np.abs(sorted_labels)[np.sign(sorted_labels) == sign])
 
-        # for thr_index, thr_val in enumerate(values):
-        #     predictions = np.where(values >= thr_val, sign, -sign)
+        # Calculate loss for each possible threshold
+        cumulative_labels = np.cumsum(sorted_labels * sign)
+        loss = np.append(initial_loss, initial_loss - cumulative_labels)
 
-        #     # classification_err = np.mean(predictions != labels)
-        #     classification_err = np.sum(np.abs(labels)[np.sign(labels) == sign])
-        #     if classification_err < thr_err:
-        #         thr_err = classification_err
-        #         thr = thr_val
-        
-        # a = (thr, thr_err)
+        # Find the threshold with the minimum loss
+        min_loss_index = np.argmin(loss)
+        thresholds = np.concatenate([[-np.inf], sorted_values[1:], [np.inf]])
+        selected_threshold = thresholds[min_loss_index]
 
-        # for thr_index, thr_value in enumerate(possible_thresholds):
-        #     temp_classification = np.zeros(len(values))
-        #     for i in range(len(values)):
-        #         if values[i] < thr_value:
-        #             temp_classification[i] = -sign
-        #         else:
-        #             temp_classification[i] = sign
-        #     calssification_err = np.count_nonzero(temp_classification != labels) / len(labels)
-        #     if calssification_err < thr_err:
-        #         thr_err = calssification_err
-        #         thr = thr_index
-        
-        # return (thr, thr_err)
-
-        # Sort values such that search of threshold below is in O(nlogn) for n the number of samples
-        # instead of O(n^2)
-        possible_thresholds = np.sort(values)
-        ids = np.argsort(values)
-        values, labels = values[ids], labels[ids]
-
-        # Loss for classifying all as `sign` - namely, if threshold is smaller than values[0]
-        loss = np.sum(np.abs(labels)[np.sign(labels) == sign])
-
-        # Loss of classifying threshold being each of the values given
-        loss = np.append(loss, loss - np.cumsum(labels * sign))
-
-        id = np.argmin(loss)
-        return np.concatenate([[-np.inf], values[1:], [np.inf]])[id], loss[id]
+        return selected_threshold, loss[min_loss_index]
     
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
