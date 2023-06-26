@@ -68,7 +68,7 @@ fitted = ge.MultivariateGaussian().fit(samples)
 print(f"expected mu:  {mu}")
 print(f"our mu:       {fitted.mu_}\n")
 print(f"expected var: \n {cov}")
-print(f"our var:      \n {fitted.cov_}\n") # TODO: should be biased or not
+print(f"our var:      \n {fitted.cov_}\n")
 
 assert np.all(np.abs(fitted.mu_ - mu) < max_diff)
 assert np.all(np.abs(fitted.cov_ - cov) < max_diff)

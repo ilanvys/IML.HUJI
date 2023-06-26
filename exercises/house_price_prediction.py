@@ -19,8 +19,6 @@ numeric_features = ['bedrooms', 'bathrooms', 'sqft_living',
                     'sqft_basement', 'yr_built', 'yr_renovated']
 features_to_drop = ['id', 'date', 'lat', 'long']
 
-# TODO: Before submission go over the code and make sure its pretty and 
-# TODO: make sure the imports are ok
 
 def preprocess_data_learning(X: pd.DataFrame, y: pd.Series = None):
     global columns_averages, columns_order
